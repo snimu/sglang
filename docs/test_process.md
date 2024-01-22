@@ -54,6 +54,9 @@ python3 bench_sglang.py
 ```
 export ANTHROPIC_API_KEY=
 export OPENAI_API_KEY=
+export AZURE_OPENAI_KEY=
+export AZURE_OPENAI_BASE_URL=
+export AZURE_OPENAI_API_VERSION=
 python -m sglang.launch_server --model-path meta-llama/Llama-2-7b-chat-hf --port 30000
 ```
 

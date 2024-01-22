@@ -30,7 +30,7 @@ def create_logit_bias_int(tokenizer):
     return mask
 
 
-CHAT_MODEL_NAMES = [
+CHAT_MODEL_NAMES_OPENAI = [
     # GPT-4
     "gpt-4",
     "gpt-4-32k",
@@ -46,21 +46,45 @@ CHAT_MODEL_NAMES = [
     "gpt-3.5-turbo-0613",
     "gpt-3.5-turbo-0301",
 ]
+CHAT_MODEL_NAMES_AZURE = [
+    # GPT-4
+    "gpt-4",
+    "gpt-4-32k",
+    "gpt-4-1106-preview",
+    "gpt-4-vision-preview",
+    "gpt-4-0613",
+    "gpt-4-0314",
+    # GPT-3.5
+    "gpt-35-turbo",
+    "gpt-35-turbo-16k",
+    "gpt-35-turbo-1106",
+    "gpt-35-turbo-16k-0613",
+    "gpt-35-turbo-0613",
+    "gpt-35-turbo-0301",
+]
 
 
-class OpenAI(BaseBackend):
-    def __init__(self, model_name, *args, **kwargs):
+class OpenAIBackend(BaseBackend):
+    def __init__(self, model_name, provider, *args, **kwargs):
         super().__init__()
 
         if isinstance(openai, Exception):
             raise openai
-
-        self.client = openai.OpenAI(*args, **kwargs)
+        
         self.model_name = model_name
         self.tokenizer = tiktoken.encoding_for_model(model_name)
         self.logit_bias_int = create_logit_bias_int(self.tokenizer)
 
-        if model_name in CHAT_MODEL_NAMES:
+        if provider == "openai":
+            self.client = openai.OpenAI(*args, **kwargs)
+            chat_model_names = CHAT_MODEL_NAMES_OPENAI
+        elif provider == "azure":
+            self.client = openai.AzureOpenAI(*args, **kwargs)
+            chat_model_names = CHAT_MODEL_NAMES_AZURE
+        else:
+            raise ValueError(f"Unknown provider: {provider}")
+
+        if model_name in chat_model_names:
             self.is_chat_model = True
         else:
             self.is_chat_model = False
@@ -119,7 +143,7 @@ class OpenAI(BaseBackend):
                 **kwargs,
             )
         else:
-            raise ValueError(f"Unknown dtype: {dtype}")
+            raise ValueError(f"Unknown dtype: {sampling_params.dtype}")
 
         return comp, {}
 
@@ -145,7 +169,7 @@ class OpenAI(BaseBackend):
             )
             return generator
         else:
-            raise ValueError(f"Unknown dtype: {dtype}")
+            raise ValueError(f"Unknown dtype: {sampling_params.dtype}")
 
     def select(
         self,
@@ -249,3 +273,13 @@ def openai_completion_stream(client, is_chat=None, prompt=None, **kwargs):
     except openai.OpenAIError as e:
         print(f"OpenAI Error: {e}")
         raise e
+
+
+class OpenAI(OpenAIBackend):
+    def __init__(self, model_name, *args, **kwargs):
+        super().__init__(model_name, "openai", *args, **kwargs)
+
+
+class AzureOpenAI(OpenAIBackend):
+    def __init__(self, model_name, *args, **kwargs):
+        super().__init__(model_name, "azure", *args, **kwargs)
